@@ -1,104 +1,98 @@
-let xhr = new XMLHttpRequest()
-let result = null;
 const gallery = document.getElementById('gallery');
 const button = document.querySelector('button');
 const input = document.querySelector('input');
 const replies = document.querySelector('.replies');
-//const avatar = document.getElementsByClassName('.avatar')
 
-button.addEventListener('click', function(e) {
-  let text = input.value.trim()
-
-  let reply = document.createElement('div')
-  reply.classList.add('reply')
-  reply.innerHTML = '<p>${text}</p>'
-  replies.appendChild(reply)
-  input.value = null
-})
-
-// function get(url) {
-//   xhr.onreadystatechange = (e) => {
-//     if (xhr.status == 200 & xhr.readyState == 4) {
-//
-//     }
-//   }
-//   xhr.open("GET", url, true)
-//   xhr.send(null)
-// }
-
-// //////////////////
-
-xhr.onreadystatechange = (e) => {
-  if (xhr.status == 200 & xhr.readyState == 4) {
-    // console.log(JSON.parse(xhr.responseText).photos)
-    let photos = JSON.parse(xhr.responseText)
-
-    for (let i = 0; i < photos.length; i++) {
-      let photo = document.createElement('div'),
-          img = document.createElement('img')
-
-          photo.classList.add('photo')
-
-          img.src = photos[i].url
-          photo.appendChild(img)
-          gallery.appendChild(photo)
+// send msg
+button.addEventListener('click', addReply);
+input.addEventListener('keydown', (e) => {
+    if (e.which == 13) { // press enter
+        addReply();
     }
+});
 
-    // start 2-th
-    xhr = new XMLHttpRequest()
-    xhr.onreadystatechange = (e) => {
-      if (xhr.status == 200 & xhr.readyState == 4) {
-        let response = JSON.parse(xhr.responseText).results[0]
-
-        let prifile_block = document.getElementById('profile')
-        let avatar = prifile_block.getElementsByClassName('avatar')[0]
-        let name = prifile_block.getElementsByClassName('name')[0]
-        let phone = prifile_block.getElementsByClassName('phone')[0]
-        let email = prifile_block.getElementsByClassName('email')[0]
-
-        // console.log("selector:", prifile_block);
-        console.log("Avt:", avatar);
-
-        avatar.src = response.picture.large
-        name.innerHTML = response.name.first + ' ' + response.name.last
-        phone.innerHTML = response.cell
-        email.innerHTML = response.email
-
-        // start 3-th
-        xhr = new XMLHttpRequest()
-        xhr.onreadystatechange = (e) => {
-          if (xhr.status == 200 & xhr.readyState == 4) {
-            let friends = JSON.parse(xhr.responseText).results
-
-            let target_block = document.getElementById('friends')
-            for (let i = 0; i < friends.length; i++) {
-              let friend_item = document.createElement('div'),
-                  img = document.createElement('img')
-                  span = document.createElement('span')
-
-                  friend_item.classList.add('friend')
-                  span.classList.add('friend_name')
-                  img.src = friends[i].picture.medium
-                  span.innerHTML = friends[i].name.first + ' ' + friends[i].name.last
-
-                  friend_item.appendChild(img)
-                  friend_item.appendChild(span)
-                  target_block.appendChild(friend_item)
-            }
-
-          }
-        }
-        xhr.open("GET", "https://randomuser.me/api/?results=15")
-        xhr.send(null)
-        // end 3-th
-      }
+function addReply() {
+    const text = input.value.trim();
+    if (!text.length) {
+        return;
     }
-    xhr.open("GET", "https://randomuser.me/api/")
-    xhr.send(null)
-    // end 2-th
-  }
+    const reply = document.createElement('div');
+    reply.classList.add('reply');
+    reply.innerHTML = `<p>${text}</p>`;
+    replies.appendChild(reply);
+    input.value = null;
 }
 
-xhr.open("GET", "/photo")
-xhr.send(null)
-// end 1th
+// render photos
+function drawPhotos(photos) {
+    const gallery = document.getElementById('gallery');
+    photos.forEach(addPhoto);
+
+    function addPhoto(photo) {
+        const container = document.createElement('div');
+        const img = document.createElement('img');
+
+        container.classList.add('photo');
+        img.src = photo.url;
+
+        container.appendChild(img);
+        gallery.appendChild(container);
+    }
+}
+
+// render profile info
+function drawProfile(profile) {
+    const avatar = document.querySelector('.avatar');
+    const name = document.querySelector('.name');
+    const phone = document.querySelector('.phone');
+    const email = document.querySelector('.email');
+
+    avatar.src = profile.picture.large;
+    name.textContent = `${profile.name.first} ${profile.name.last}`;
+    phone.textContent = profile.cell;
+    email.textContent = profile.email;
+}
+
+// render frends block
+function drawFriends(friendList) {
+    const targetBlock = document.getElementById('friends');
+
+    friendList.forEach((friend) => {
+        let friendItem = document.createElement('div'),
+            img = document.createElement('img'),
+            span = document.createElement('span');
+
+        friendItem.classList.add('friend')
+        span.classList.add('friend_name')
+        img.src = friend.picture.medium
+        span.innerHTML = friend.name.first + ' ' + friend.name.last
+
+        friendItem.appendChild(img)
+        friendItem.appendChild(span)
+        targetBlock.appendChild(friendItem)
+    });
+}
+
+/////////////////////////    GET    /////////////////////////////
+function get(url, callback) {
+    const xhr = new XMLHttpRequest();
+
+    xhr.onreadystatechange = () => {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            callback(JSON.parse(xhr.responseText));
+        }
+    };
+
+    xhr.open('GET', url, true);
+    xhr.send(null);
+}
+
+get('/photos', (response) => {
+    drawPhotos(response);
+    get('https://randomuser.me/api/', (response) => {
+        drawProfile(response.results[0]);
+        get('https://randomuser.me/api/?results=15', (response) => {
+            drawFriends(response.results);
+        });
+    });
+});
